@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:websocket="http://www.springframework.org/schema/websocket"
+	xsi:schemaLocation="
+	    http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.2.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.2.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.2.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.2.xsd
+		http://www.springframework.org/schema/websocket http://www.springframework.org/schema/websocket/spring-websocket-4.2.xsd">
+
+	<!-- 打开@PreFilter,@PreAuthorize, @PostFilter, @PostAuthorize等注解支持（注意：放在这里只会对Controller层的方法生效） -->
+	<!-- <security:global-method-security pre-post-annotations="enabled" /> -->
+	<aop:aspectj-autoproxy proxy-target-class="true" />
+
+    <!-- 添加对jackson的支持 -->
+	<bean id="objectMapper" class="com.mie.base.core.plugin.json.CustomObjectMapper" />
+	<bean id="jsonConverter"
+		class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter">
+		<property name="objectMapper" ref="objectMapper" />
+		<property name="supportedMediaTypes">
+			<list>
+				<value>application/json;charset=UTF-8</value>
+				<value>text/json;charset=UTF-8</value>
+			</list>
+		</property>
+	</bean>
+
+    <!-- request请求中添加对Date类型的转换支持 -->
+	<bean id="dateConverter" class="com.mie.base.core.utils.format.StringToDateConverter"></bean>
+	<bean class="org.springframework.context.support.ConversionServiceFactoryBean" id="factoryBean">
+		<property name="converters">
+			<list>
+				<ref bean="dateConverter"/>
+			</list>
+		</property>
+	</bean>
+	
+    <mvc:annotation-driven validator="validator" conversion-service="factoryBean">
+        <mvc:message-converters>
+			<ref bean="jsonConverter" />
+		</mvc:message-converters>
+    </mvc:annotation-driven>
+	<!-- 打开SpringMVC注解支持 -->
+	<!-- <mvc:annotation-driven validator="validator">
+		<mvc:message-converters>
+			<ref bean="dateConverter" />
+			<ref bean="jsonConverter" />
+		</mvc:message-converters>
+	</mvc:annotation-driven> -->
+
+	<!-- 当HTTP GET请求地址是/resources/**下的资源时候，不需要DispatchServlet处理， 直接转到 ${webappRoot}/resources目录下的资源，有利于提高静态资源访问效率 -->
+	<mvc:resources mapping="/resources/**" location="/resources/" />
+	<mvc:resources mapping="/mobileview/**" location="/mobileview/" />
+	<!-- <mvc:resources mapping="/swagger/**" location="/swagger/" /> -->
+
+	<!-- 视图资源配置，处理控制器组件返回的view，自动加上前缀及后缀 -->
+	<bean
+		class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/WEB-INF/view/" />
+		<property name="suffix" value=".jsp" />
+	</bean>
+
+	<!-- 扫描所有controller组件 -->
+	<context:component-scan base-package="com.mie.**.controller" />
+
+	<!-- 配置web应用的默首页为/open/forward.jsp -->
+	<mvc:view-controller path="/" view-name="base/user/login" />
+
+	<!-- Enables the Spring MVC @Controller programming model -->
+	<bean id="validator"
+		class="org.springframework.validation.beanvalidation.LocalValidatorFactoryBean">
+		<property name="validationMessageSource" ref="messageSource" />
+	</bean>
+
+	<!-- Enable file upload functionality -->
+	<bean id="multipartResolver"
+		class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+		<!-- one of the properties available; the maximum file size in bytes (5M=5242880) -->
+		<property name="maxUploadSize" value="524288000" />
+	</bean>
+
+	<!-- 对于api文档的请求，允许跨域请求 -->
+	<mvc:cors>
+		<mvc:mapping path="v2/api-docs" allowed-origins="*" allowed-methods="GET, PUT" />
+	</mvc:cors>
+
+	<mvc:interceptors>
+		<bean class="com.mie.base.core.web.interceptor.HttpLogInterceptor" />
+	</mvc:interceptors>
+
+</beans>
